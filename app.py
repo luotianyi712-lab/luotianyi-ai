@@ -444,7 +444,7 @@ def ask_ai(user_text):
 # 🚀 调用智谱 GLM-4.7模型
 # =========================
 response = client.chat.completions.create(
-    model="glm-4.5-air", # 智谱目前最牛逼的模型
+    model="glm-4.5-air-241226",# 智谱目前最牛逼的模型
     messages=messages,
     temperature=0.8
 )
