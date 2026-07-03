@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<title>洛天依聊天机器人</title>
+
+<style>
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(to bottom, #e6f0ff, #ffffff);
+}
+
+.chat-container {
+    width: 420px;
+    margin: 40px auto;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 0 15px rgba(0,0,0,0.1);
+    background: white;
+}
+
+.header {
+    background: #6aa6ff;
+    color: white;
+    padding: 12px;
+    text-align: center;
+    font-weight: bold;
+}
+
+.chat-box {
+    height: 420px;
+    overflow-y: auto;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+}
+
+.msg {
+    margin: 5px 0;
+    padding: 8px 10px;
+    border-radius: 10px;
+    max-width: 75%;
+    word-wrap: break-word;
+}
+
+.user {
+    align-self: flex-end;
+    background: #cfe2ff;
+    color: #003366;
+}
+
+.bot {
+    align-self: flex-start;
+    background: #f1f1f1;
+    color: #333;
+}
+
+.input-area {
+    display: flex;
+    border-top: 1px solid #ddd;
+}
+
+input {
+    flex: 1;
+    padding: 10px;
+    border: none;
+    outline: none;
+}
+
+button {
+    padding: 10px 15px;
+    border: none;
+    background: #6aa6ff;
+    color: white;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #4f8ef7;
+}
+
+.status {
+    font-size: 12px;
+    color: gray;
+    padding: 5px 10px;
+}
+</style>
+
+</head>
+
+<body>
+
+<div class="chat-container">
+
+    <div class="header">洛天依 · 聊天系统</div>
+
+    <div class="chat-box" id="chat-box"></div>
+
+    <div class="status" id="status"></div>
+
+    <div class="input-area">
+        <input id="input" placeholder="输入消息..." />
+        <button onclick="sendMsg()">发送</button>
+    </div>
+
+</div>
+
+<script>
+
+function addMsg(text, type) {
+    const box = document.getElementById("chat-box");
+    const div = document.createElement("div");
+    div.className = "msg " + type;
+    div.innerText = text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+}
+
+function setStatus(text){
+    document.getElementById("status").innerText = text;
+}
+
+async function sendMsg() {
+    const input = document.getElementById("input");
+    const text = input.value.trim();
+
+    if (!text) return;
+
+    addMsg("你：" + text, "user");
+    input.value = "";
+
+    setStatus("天依正在思考中...");
+
+    try {
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({message: text})
+        });
+
+        if (!res.ok) {
+            throw new Error("HTTP错误：" + res.status);
+        }
+
+        const data = await res.json();
+
+        if (!data.reply) {
+            addMsg("天依：嗯……我好像没听清呢", "bot");
+        } else {
+            addMsg("天依：" + data.reply, "bot");
+        }
+
+    } catch (err) {
+        addMsg("天依：连接好像断了一下呢（" + err + "）", "bot");
+    }
+
+    setStatus("");
+}
+
+// 回车发送
+document.getElementById("input").addEventListener("keydown", function(e){
+    if(e.key === "Enter"){
+        sendMsg();
+    }
+});
+</script>
+
+</body>
+</html>
