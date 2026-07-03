@@ -1,17 +1,23 @@
 from flask import Flask, render_template, request, jsonify
 import json
 import os
-import dashscope
-from dashscope import Generation
+from openai import OpenAI
 
 app = Flask(__name__)
 
 # =========================
-# 🔑 API KEY
+# 🔑 API KEY (安全版 - 智谱 GLM)
 # =========================
-DASHSCOPE_API_KEY = "sk-ws-H.RXEMPEL.pfhD.MEUCIDKBIqEjRpzlJP399EP5vBDvUpTyIWc8UYO1D_XSQFG5AiEAg16eHuFITWEzNYR1tN8L1rQf-lC16imIwNAqff7ehJo"
-dashscope.api_key = DASHSCOPE_API_KEY
+# 从 Vercel 后台的环境变量中读取 Key，不要明文写在代码里！
+# 注意：在 Vercel 环境变量里，Key 要写 GLM_API_KEY，Value 写你的智谱 API Key
+GLM_API_KEY = os.environ.get("GLM_API_KEY", "")
+client = OpenAI(
+    api_key=GLM_API_KEY,
+    base_url="https://open.bigmodel.cn/api/paas/v4/"
+)
 
+# ⚠️【新增的关键修复】明确告诉 Vercel 顶层变量叫 app
+app = app 
 # =========================
 # 🧠 洛天依人设
 # =========================
@@ -328,39 +334,52 @@ SYSTEM_PROMPT = """
 
 像一个现实中存在的少女，而不是舞台角色或AI。
 """
+
 # =========================
-# 💾 记忆系统
+# 💾 记忆系统（Vercel 防崩溃修复版）
 # =========================
 MEMORY_FILE = "memory.json"
 
 def load_memory():
-    if not os.path.exists(MEMORY_FILE):
+    try:
+        if not os.path.exists(MEMORY_FILE):
+            return {
+                "name": None,
+                "history": [],
+                "emotion_memory": {"affection": 0}
+            }
+
+        with open(MEMORY_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        # 🧠 兼容旧版本
+        if "history" not in data:
+            data["history"] = []
+
+        if "name" not in data:
+            data["name"] = None
+
+        # 🧠 情绪记忆补丁
+        if "emotion_memory" not in data:
+            data["emotion_memory"] = {"affection": 0}
+
+        return data
+    except Exception:
+        # 如果读取失败（比如Vercel只读环境），返回一个空的默认记忆，防止程序崩溃
         return {
             "name": None,
             "history": [],
             "emotion_memory": {"affection": 0}
         }
 
-    with open(MEMORY_FILE, "r", encoding="utf-8") as f:
-        data = json.load(f)
-
-    # 🧠 兼容旧版本
-    if "history" not in data:
-        data["history"] = []
-
-    if "name" not in data:
-        data["name"] = None
-
-    # 🧠 情绪记忆补丁
-    if "emotion_memory" not in data:
-        data["emotion_memory"] = {"affection": 0}
-
-    return data
-
 
 def save_memory(memory):
-    with open(MEMORY_FILE, "w", encoding="utf-8") as f:
-        json.dump(memory, f, ensure_ascii=False, indent=2)
+    try:
+        with open(MEMORY_FILE, "w", encoding="utf-8") as f:
+            json.dump(memory, f, ensure_ascii=False, indent=2)
+    except Exception:
+        # 如果写入失败（比如Vercel不能写文件），直接忽略，防止报 500 错误
+        pass
 
 
 # 初始化记忆
@@ -421,17 +440,17 @@ def ask_ai(user_text):
 
         messages.append({"role": "user", "content": user_text})
 
-        # 调用模型
-        response = Generation.call(
-            model='qwen-plus',
-            messages=messages,
-            temperature=0.8
-        )
+      # =========================
+# 🚀 调用智谱 GLM-4-Plus 模型
+# =========================
+response = client.chat.completions.create(
+    model="glm-4-plus",  # 智谱目前最牛逼的模型
+    messages=messages,
+    temperature=0.8
+)
 
-        print("DEBUG:", response)
-
-        # 安全取值（防 None）
-        reply = getattr(response.output, "text", None)
+# 安全取值（防 None）
+reply = response.choices[0].message.content
 
         if not reply:
             return "嗯……我好像有点不知道怎么回答呢。"
@@ -478,8 +497,5 @@ def chat():
 
 
 # =========================
-# 🚀 启动
+# 🚀 启动（Vercel 必须删掉 app.run，但保留 `app` 变量即可）
 # =========================
-if __name__ == "__main__":
-    print("🎤 洛天依启动成功：http://127.0.0.1:5000")
-    app.run(debug=True)
