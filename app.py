@@ -417,66 +417,70 @@ def ask_ai(user_text):
     global memory
 
     try:
-
-        # 💙 更新情绪
+        # =========================
+        # 💙 情绪更新
+        # =========================
         update_emotion(memory, user_text)
-
         affection = memory["emotion_memory"]["affection"]
 
-        # 构建 messages
+        # =========================
+        # 🧠 构造 messages
+        # =========================
         messages = [
             {
                 "role": "system",
                 "content": SYSTEM_PROMPT +
-                           f"\n用户信息：{memory}" +
+                           f"\n\n用户信息：{json.dumps(memory, ensure_ascii=False)}" +
                            f"\n情绪好感度：{affection}"
             }
         ]
 
-        # 加入历史
-        for item in memory.get("history", [])[-10:]:
-            messages.append({"role": "user", "content": item[0]})
-            messages.append({"role": "assistant", "content": item[1]})
+        # 加入历史（最多10轮）
+        history = memory.get("history", [])[-10:]
 
+        for item in history:
+            if len(item) == 2:
+                messages.append({"role": "user", "content": item[0]})
+                messages.append({"role": "assistant", "content": item[1]})
+
+        # 当前输入
         messages.append({"role": "user", "content": user_text})
 
-      # =========================
-# 🚀 调用智谱 GLM-4.7模型
-# =========================
-response = client.chat.completions.create(
-    model="glm-4.5-air-241226",# 智谱目前最牛逼的模型
-    messages=messages,
-    temperature=0.8
-)
+        # =========================
+        # 🚀 调用 GLM
+        # =========================
+        response = client.chat.completions.create(
+            model="glm-4.5-air",
+            messages=messages,
+            temperature=0.8
+        )
 
-# 安全取值（防 None）
-reply = response.choices[0].message.content
+        # =========================
+        # 🧾 取回复
+        # =========================
+        reply = response.choices[0].message.content
 
         if not reply:
             return "嗯……我好像有点不知道怎么回答呢。"
 
         # =========================
-        # 🧠 写入记忆
+        # 💾 写入记忆
         # =========================
         memory["history"].append([user_text, reply])
         memory["history"] = memory["history"][-20:]
 
-        # =========================
-        # 🧠 名字记忆
-        # =========================
+        # 名字记忆（简单版）
         if "我叫" in user_text:
             memory["name"] = user_text.replace("我叫", "").strip()
 
-        # =========================
-        # 💾 保存
-        # =========================
         save_memory(memory)
 
         return reply
 
     except Exception as e:
-        return f"嗯……系统好像有点卡住了（{e}）"
-
+        # ⚠️ 关键：真实错误输出（方便你调试）
+        print("ERROR:", e)
+        return f"系统错误：{str(e)}"
 
 # =========================
 # 🌐 页面
