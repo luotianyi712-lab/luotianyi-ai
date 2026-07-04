@@ -449,7 +449,7 @@ def ask_ai(user_text):
         # 🚀 调用 GLM
         # =========================
         response = client.chat.completions.create(
-            model="glm-4.5-air",
+            model="glm-4.7",
             messages=messages,
             temperature=0.8
         )
