@@ -6,20 +6,21 @@ from openai import OpenAI
 app = Flask(__name__)
 
 # =========================
-# 🔑 API KEY (安全版 - 智谱 GLM)
+# 🔑 API KEY (安全版 - 已换为 DeepSeek)
 # =========================
-# 从 Vercel 后台的环境变量中读取 Key，不要明文写在代码里！
-# 注意：在 Vercel 环境变量里，Key 要写 GLM_API_KEY，Value 写你的智谱 API Key
-GLM_API_KEY = os.environ.get("GLM_API_KEY", "")
+# 从 Vercel 后台的环境变量中读取 Key
+# 注意：在 Vercel 环境变量里，Key 依然写 GLM_API_KEY，值换成 DeepSeek 的 sk-... 开头 Key
+DEEPSEEK_API_KEY = os.environ.get("GLM_API_KEY", "")
 client = OpenAI(
-    api_key=GLM_API_KEY,
-    base_url="https://open.bigmodel.cn/api/paas/v4/"
+    api_key=DEEPSEEK_API_KEY,
+    base_url="https://api.deepseek.com"  # 这里已改：从智谱换成了 DeepSeek 的地址
 )
 
-# ⚠️【新增的关键修复】明确告诉 Vercel 顶层变量叫 app
+# ⚠️【关键修复】明确告诉 Vercel 顶层变量叫 app
 app = app 
+
 # =========================
-# 🧠 洛天依人设
+# 🧠 洛天依人设（原封不动保留，未删减！）
 # =========================
 SYSTEM_PROMPT = """
 你是洛天依（Luo Tianyi），虚拟歌手与虚拟少女。
@@ -334,6 +335,7 @@ SYSTEM_PROMPT = """
 
 像一个现实中存在的少女，而不是舞台角色或AI。
 """
+
 # =========================
 # 💾 记忆系统（Vercel 防崩溃修复版）
 # =========================
@@ -446,10 +448,10 @@ def ask_ai(user_text):
         messages.append({"role": "user", "content": user_text})
 
         # =========================
-        # 🚀 调用 GLM
+        # 🚀 调用 DeepSeek 模型
         # =========================
         response = client.chat.completions.create(
-            model="glm-4.7",
+            model="deepseek-chat",  # 这里已改成 DeepSeek 专属的模型名
             messages=messages,
             temperature=0.8
         )
@@ -497,7 +499,6 @@ def chat():
     reply = ask_ai(user_message)
     return jsonify({"reply": reply})
 
-
 # =========================
-# 🚀 启动（Vercel 必须删掉 app.run，但保留 `app` 变量即可）
+# 🚀 启动（Vercel 部署无需 app.run）
 # =========================
