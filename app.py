@@ -453,8 +453,6 @@ def ask_ai(user_text):
             messages=messages,
             temperature=0.8
         )
-        print("RAW RESPONSE:", response)
-        print("CONTENT:", response.choices[0].message.content)
         # =========================
         # 🧾 取回复
         # =========================
